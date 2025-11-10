@@ -13,10 +13,17 @@
 5 - Configurado no código as chaves de URL e KEY igual explicado pelo professor no back4app.
 
 ------------ > PRINTS ORDENADOS DE CIMA PRA BAIXO NOS FILES < ----------- NÃO SEI SE ACERTEI SUBIR ELES KKK
+----- > FUNCIONAMENTO DO BANCO DE DADOS
 ![PRINT DO BANCO FUNCIONANDO ](<Captura de tela 2025-11-10 120348.png>)
+
+----- > COLUNAS DA TABELA E OS TIPOS
 ![PRINT DAS COLUNAS DA TABELA E SEUS TIPOS](<Captura de tela 2025-11-10 120410.png>)
+
+----- > PRINT DAS PERMISSOES
 ![PRINT DAS PERMISSOES PARA FUNCIONAMENTO](<Captura de tela 2025-11-10 120431.png>)
 
+
+------------------
 Tela de login e cadastro feita basica (OK)
 Jogo rodando (OK)
 Tabela de pontuação funcionando no bando de dados(OK)
