@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Tetris</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    #tetris {
+      display: grid;
+      grid-template-columns: repeat(10, 30px);
+      grid-template-rows: repeat(10, 30px);
+      gap: 1px;
+      margin-top: 20px;
+      border: 2px solid #000;
+    }
+    .celula { width: 30px; height: 30px; background-color: #eee; }
+    
+    #telaLogin {
+      max-width: 400px;
+      margin: 50px auto;
+      padding: 30px;
+      border: 2px solid #ccc;
+      border-radius: 10px;
+    }
+    
+    #telaJogo {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+
+<div id="telaLogin" class="text-center">
+  <h2>Tetris - Login</h2>
+  
+  <input type="email" id="email" class="form-control mb-2" placeholder="Email">
+  <input type="password" id="senha" class="form-control mb-3" placeholder="Senha (min 6 caracteres)">
+  
+  <button onclick="fazerLogin()" class="btn btn-primary w-100 mb-2">Entrar</button>
+  <button onclick="criarConta()" class="btn btn-secondary w-100">Criar Conta</button>
+  
+  <p id="mensagem" class="mt-3"></p>
+</div>
+
+<!-- TELA DO JOGO -->
+<div id="telaJogo">
+  <div class="container">
+    <div class="row">
+      
+      <div class="col-6">
+        <h2>Tetris</h2>
+        <p>Usuário: <strong id="nomeUsuario"></strong></p>
+        <button onclick="sair()" class="btn btn-danger btn-sm">Sair</button>
+        
+        <div id="tetris"></div>
+        <div id="pontuacao">Pontuação: 0</div>
+      </div>
+
+      <div class="col-6">
+        <h3>Ranking:</h3>
+        <button onclick="carregarRanking()" class="btn btn-info btn-sm mb-2">Atualizar</button>
+        <ul id="ranking" class="list-group"></ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
+<script>
+ 
+  // CONFIGURAÇÃO DO SUPABASE com url e key
+
+ 
+  const SUPABASE_URL = 'https://zoimatenyochnfodgcjz.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvaW1hdGVueW9jaG5mb2RnY2p6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3ODEwOTEsImV4cCI6MjA3ODM1NzA5MX0.rQzbiNCJDN-7ICRVRO_M8yhKcd29EvSJEt7-MQ6Utug';
+
+  const { createClient } = supabase;
+  const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let usuarioLogado = null;
+
+  
+  //  DE LOGIN/CADASTRO
+  
+  
+  async function criarConta() {
+    const email = document.getElementById('email').value;
+    const senha = document.getElementById('senha').value;
+    
+    const { error } = await supabaseClient.auth.signUp({ email, password: senha });
+    
+    if (error) {
+      document.getElementById('mensagem').innerHTML = 
+        '<span class="text-danger">Erro: ' + error.message + '</span>';
+    } else {
+      document.getElementById('mensagem').innerHTML = 
+        '<span class="text-success">Conta criada! Agora faça login.</span>';
+    }
+  }
+  
+  async function fazerLogin() {
+    const email = document.getElementById('email').value;
+    const senha = document.getElementById('senha').value;
+    
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+      email: email,
+      password: senha
+    });
+    
+    if (error) {
+      document.getElementById('mensagem').innerHTML = 
+        '<span class="text-danger">Erro: ' + error.message + '</span>';
+    } else {
+      usuarioLogado = data.user;
+      mostrarTelaJogo();
+    }
+  }
+  
+  function mostrarTelaJogo() {
+    document.getElementById('telaLogin').style.display = 'none';
+    document.getElementById('telaJogo').style.display = 'block';
+    document.getElementById('nomeUsuario').textContent = usuarioLogado.email;
+    carregarRanking();
+    iniciarJogo();
+  }
+  
+  async function sair() {
+    await supabaseClient.auth.signOut();
+    location.reload();
+  }
+
+  
+  // FUNÇÃO PARA SALVAR PONTUACAO SUPABASE
+ 
+  
+  async function salvarPontuacao(pontos) {
+    const { error } = await supabaseClient
+      .from('pontuacoes')
+      .insert([
+        { 
+          usuario: usuarioLogado.email,
+          pontuacao: pontos
+        }
+      ]);
+    
+    if (error) {
+      console.error('Erro ao salvar:', error);
+    } else {
+      carregarRanking();
+    }
+  }
+  
+  async function carregarRanking() {
+    const { data, error } = await supabaseClient
+      .from('pontuacoes')
+      .select('*')
+      .order('pontuacao', { ascending: false })
+      .limit(10);
+    
+    if (!error && data) {
+      const ul = document.getElementById('ranking');
+      ul.innerHTML = '';
+      
+      data.forEach((item, i) => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item';
+        li.textContent = `${i+1}º - ${item.usuario}: ${item.pontuacao} pontos`;
+        ul.appendChild(li);
+      });
+    }
+  }
+
+
+  // CÓDIGO DO JOGO
+ 
+  
+  const Pecas = [
+    [
+      [1, 0, 0, 0],
+      [1, 0, 0, 0],
+      [1, 0, 0, 0],
+      [1, 0, 0, 0]
+    ],
+    [
+      [1, 0, 0, 0],
+      [1, 0, 0, 0],
+      [1, 0, 0, 0],
+      [1, 1, 0, 0]
+    ],
+    [
+      [0, 1, 0],
+      [1, 1, 1],
+      [0, 0, 0]
+    ]
+  ];
+
+  const linhas = 10, colunas = 10;
+  let pontuacao = 0;
+
+  function CriarMapa() {
+    let mapa = [];
+    for (let i = 0; i < linhas; i++) {
+      let linha = [];
+      for (let j = 0; j < colunas; j++) {
+        linha[j] = 0;
+      }
+      mapa[i] = linha;
+    }
+    return mapa;
+  }
+
+  function ExibirMapa(mapa, pecaAtual) {
+    const container = document.getElementById("tetris");
+    container.innerHTML = '';
+    mapa.forEach((linha, i) => {
+      linha.forEach((celula, j) => {
+        const div = document.createElement("div");
+        div.className = 'celula';
+        if (celula === 1 || (pecaAtual && 
+            pecaAtual.forma.some((pl, x) =>
+              pl.some((pc, y) => pc === 1 && i === pecaAtual.linha + x && j === pecaAtual.coluna + y)
+            )
+          )) {
+          div.style.backgroundColor = 'red';
+        }
+        container.appendChild(div);
+      });
+    });
+  }
+
+  function AtualizarPontuacao() {
+    document.getElementById('pontuacao').textContent =
+      `Pontuação: ${pontuacao}`;
+  }
+
+  function NovaPeca() {
+    const hora = Date.now();
+    const resto = hora % Pecas.length;
+    return { forma: Pecas[resto], linha: 0, coluna: 4 };
+  }
+
+  function Colisao(peca, mapa) {
+    for (let i = 0; i < peca.forma.length; i++) {
+      for (let j = 0; j < peca.forma[i].length; j++) {
+        if (peca.forma[i][j] === 1) {
+          const li = peca.linha + i;
+          const co = peca.coluna + j;
+          if (li < 0 || li >= linhas || co < 0 || co >= colunas) return true;
+          if (mapa[li][co] === 1) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  function FixarPeca(peca, mapa) {
+    peca.forma.forEach((pl, i) => {
+      pl.forEach((pc, j) => {
+        if (pc === 1) mapa[peca.linha + i][peca.coluna + j] = 1;
+      });
+    });
+  }
+
+  function CriarLinhaVazia() {
+    let linha = [];
+    for (let j = 0; j < colunas; j++) {
+      linha[j] = 0;
+    }
+    return linha;
+  }
+
+  function LimparLinhas(mapa) {
+    var i = linhas - 1;
+    while (i >= 0) {
+      if (mapa[i].every(c => c === 1)) {
+        mapa.splice(i, 1);
+        mapa.unshift(CriarLinhaVazia());
+        pontuacao += 100;
+      } else {
+        i--;
+      }
+    }
+  }
+
+  function Rotacionar(peca) {
+    const totalLinhas = peca.forma.length;
+    const totalColunas = peca.forma[0].length;
+    let nova = [];
+    let indiceNova = 0;
+    for (let colunaIndex = 0; colunaIndex < totalColunas; colunaIndex++) {
+      let linhaRot = [];
+      let indiceLinha = 0;
+      for (let linhaIndex = totalLinhas - 1; linhaIndex >= 0; linhaIndex--) {
+        linhaRot[indiceLinha] = peca.forma[linhaIndex][colunaIndex];
+        indiceLinha++;
+      }
+      nova[indiceNova] = linhaRot;
+      indiceNova++;
+    }
+    return nova;
+  }
+
+  let mapa = CriarMapa();
+  let pecaAtual = NovaPeca();
+  let intervaloJogo;
+
+  function AtualizarJogo() {
+    const tentativa = { ...pecaAtual, linha: pecaAtual.linha + 1 };
+    if (!Colisao(tentativa, mapa)) {
+      pecaAtual.linha++;
+    } else {
+      FixarPeca(pecaAtual, mapa);
+      LimparLinhas(mapa);
+      pecaAtual = NovaPeca();
+      if (Colisao(pecaAtual, mapa)) {
+        clearInterval(intervaloJogo);
+        alert("Fim de jogo! Pontuação: " + pontuacao);
+        
+        // SALVAR NO SUPABASE
+        salvarPontuacao(pontuacao);
+        
+        mapa = CriarMapa();
+        pontuacao = 0;
+        pecaAtual = NovaPeca();
+        iniciarJogo();
+      }
+    }
+    ExibirMapa(mapa, pecaAtual);
+    AtualizarPontuacao();
+  }
+
+  function iniciarJogo() {
+    if (intervaloJogo) clearInterval(intervaloJogo);
+    intervaloJogo = setInterval(AtualizarJogo, 1000);
+  }
+
+  document.addEventListener('keydown', e => {
+    let temp;
+    switch (e.key) {
+      case 'ArrowLeft':
+        temp = { ...pecaAtual, coluna: pecaAtual.coluna - 1 };
+        if (!Colisao(temp, mapa)) pecaAtual.coluna--;
+        break;
+      case 'ArrowRight':
+        temp = { ...pecaAtual, coluna: pecaAtual.coluna + 1 };
+        if (!Colisao(temp, mapa)) pecaAtual.coluna++;
+        break;
+      case 'ArrowDown':
+        AtualizarJogo();
+        break;
+      case 'ArrowUp':
+        temp = { ...pecaAtual, forma: Rotacionar(pecaAtual) };
+        if (!Colisao(temp, mapa)) pecaAtual.forma = temp.forma;
+        break;
+    }
+    ExibirMapa(mapa, pecaAtual);
+  });
+</script>
+
+</body>
+</html>
