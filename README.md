@@ -12,8 +12,8 @@
 
 5 - Configurado no código as chaves de URL e KEY igual explicado pelo professor no back4app.
 
-
-![PRINT DO BANCO FUNCIONANDO](<Captura de tela 2025-11-10 120348.png>)
+------------ > PRINTS ORDENADOS DE CIMA PRA BAIXO NOS FILES < ----------- NÃO SEI SE ACERTEI SUBIR ELES KKK
+![PRINT DO BANCO FUNCIONANDO ](<Captura de tela 2025-11-10 120348.png>)
 ![PRINT DAS COLUNAS DA TABELA E SEUS TIPOS](<Captura de tela 2025-11-10 120410.png>)
 ![PRINT DAS PERMISSOES PARA FUNCIONAMENTO](<Captura de tela 2025-11-10 120431.png>)
 
